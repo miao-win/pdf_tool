@@ -31,7 +31,8 @@ class PDFCompressor(PDFOperationBase):
     def execute(
             self,
             output_dir: Path,
-            compression_level: str = 'medium'
+            compression_level: str = 'medium',
+            output_name: str = None
     ) -> PDFOperationResult:
         level = CompressionLevel(compression_level)
         original_size = self.input_path.stat().st_size
@@ -39,11 +40,11 @@ class PDFCompressor(PDFOperationBase):
         try:
             with Pdf.open(self.input_path) as pdf:
                 self._compress_pdf(pdf, level)
-                output_path = output_dir / f'{self.input_path.stem}_compressed.pdf'
+                base_name = output_name if output_name else f'{self.input_path.stem}_compressed'
+                output_path = output_dir / f'{base_name}.pdf'
                 pdf.save(
                     output_path,
                     compress_streams=True,
-                    preserve_stream_filters=True,
                 )
 
             output_size = output_path.stat().st_size
@@ -118,9 +119,10 @@ class PDFCompressor(PDFOperationBase):
     def compress(
             self,
             output_dir: Path,
-            level: str = 'medium'
+            level: str = 'medium',
+            output_name: str = None
     ) -> PDFOperationResult:
-        return self.execute(output_dir, compression_level=level)
+        return self.execute(output_dir, compression_level=level, output_name=output_name)
 
     def get_compression_estimate(self, level: str) -> str:
         estimates = {

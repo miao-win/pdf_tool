@@ -1,0 +1,6 @@
+PySide6
+pypdf
+pikepdf
+Pillow
+fitz
+pyinstaller

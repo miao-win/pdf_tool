@@ -10,18 +10,20 @@ class CompressWorker(BaseWorker):
             input_path: Path,
             output_dir: Path,
             compression_level: str = 'medium',
+            output_name: str = None,
             parent=None
     ):
         super().__init__(parent)
         self.input_path = input_path
         self.output_dir = output_dir
         self.compression_level = compression_level
+        self.output_name = output_name
 
     def run(self):
         try:
             self.status.emit('正在压缩 PDF...')
             compressor = PDFCompressor(self.input_path)
-            result = compressor.compress(self.output_dir, self.compression_level)
+            result = compressor.compress(self.output_dir, self.compression_level, self.output_name)
             self.finished.emit(result.success, result)
 
         except Exception as e:

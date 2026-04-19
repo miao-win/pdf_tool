@@ -31,3 +31,6 @@ def open_folder(path: Path) -> None:
     from PySide6.QtGui import QDesktopServices
     from PySide6.QtCore import QUrl
     QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent)))
+
+
+from .config_manager import ConfigManager, get_config_manager, ExportPathMode

@@ -12,6 +12,7 @@ class SplitWorker(BaseWorker):
             split_mode: str,
             page_spec: str = None,
             pages_per_file: int = None,
+            output_name: str = None,
             parent=None
     ):
         super().__init__(parent)
@@ -20,6 +21,7 @@ class SplitWorker(BaseWorker):
         self.split_mode = split_mode
         self.page_spec = page_spec
         self.pages_per_file = pages_per_file
+        self.output_name = output_name
 
     def run(self):
         try:
@@ -27,9 +29,9 @@ class SplitWorker(BaseWorker):
             splitter = PDFSplitter(self.input_path)
 
             if self.split_mode == 'range':
-                result = splitter.split_by_ranges(self.output_dir, self.page_spec)
+                result = splitter.split_by_ranges(self.output_dir, self.page_spec, self.output_name)
             else:
-                result = splitter.split_by_fixed(self.output_dir, self.pages_per_file)
+                result = splitter.split_by_fixed(self.output_dir, self.pages_per_file, self.output_name)
 
             self.finished.emit(result.success, result)
 

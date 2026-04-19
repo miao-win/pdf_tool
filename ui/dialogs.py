@@ -27,3 +27,11 @@ class Dialogs:
         msg_box.setText(message)
         msg_box.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
         return msg_box.exec() == QMessageBox.StandardButton.Ok
+
+    @staticmethod
+    def show_info(parent: QWidget, title: str, message: str):
+        msg_box = QMessageBox(parent)
+        msg_box.setIcon(QMessageBox.Icon.Information)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(message)
+        msg_box.exec()

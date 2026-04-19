@@ -12,11 +12,18 @@ class PDFSplitter(PDFOperationBase):
             output_dir: Path,
             split_mode: str = 'range',
             page_spec: str = None,
-            pages_per_file: int = None
+            pages_per_file: int = None,
+            output_name: str = None
     ) -> PDFOperationResult:
         reader = PdfReader(str(self.input_path))
         total_pages = len(reader.pages)
         output_files = []
+
+        base_name = output_name if output_name else self.input_path.stem
+
+        # 创建子文件夹来存放拆分的文件
+        output_subdir = output_dir / base_name
+        output_subdir.mkdir(parents=True, exist_ok=True)
 
         try:
             if split_mode == 'range':
@@ -27,7 +34,7 @@ class PDFSplitter(PDFOperationBase):
                         if 0 <= page_idx < total_pages:
                             writer.add_page(reader.pages[page_idx])
 
-                    output_path = output_dir / f'{self.input_path.stem}_part{idx + 1}.pdf'
+                    output_path = output_subdir / f'{base_name}_part{idx + 1}.pdf'
                     with open(output_path, 'wb') as f:
                         writer.write(f)
                     output_files.append(output_path)
@@ -40,7 +47,7 @@ class PDFSplitter(PDFOperationBase):
                     for page_idx in range(idx, end_idx):
                         writer.add_page(reader.pages[page_idx])
 
-                    output_path = output_dir / f'{self.input_path.stem}_p{idx + 1}_to_p{end_idx}.pdf'
+                    output_path = output_subdir / f'{base_name}_p{idx + 1}_to_p{end_idx}.pdf'
                     with open(output_path, 'wb') as f:
                         writer.write(f)
                     output_files.append(output_path)
@@ -65,17 +72,20 @@ class PDFSplitter(PDFOperationBase):
     def split_by_ranges(
             self,
             output_dir: Path,
-            page_spec: str
+            page_spec: str,
+            output_name: str = None
     ) -> PDFOperationResult:
-        return self.execute(output_dir, split_mode='range', page_spec=page_spec)
+        return self.execute(output_dir, split_mode='range', page_spec=page_spec, output_name=output_name)
 
     def split_by_fixed(
             self,
             output_dir: Path,
-            pages_per_file: int
+            pages_per_file: int,
+            output_name: str = None
     ) -> PDFOperationResult:
         return self.execute(
             output_dir,
             split_mode='fixed',
-            pages_per_file=pages_per_file
+            pages_per_file=pages_per_file,
+            output_name=output_name
         )

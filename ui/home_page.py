@@ -56,7 +56,7 @@ class FeatureCard(QWidget):
         painter.setFont(font)
 
         text_rect = self.rect().adjusted(margin, 70, -margin, -margin)
-        painter.drawText(text_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.TextWordWrap, self.description)
+        painter.drawText(text_rect, Qt.AlignmentFlag.AlignLeft | Qt.TextWordWrap, self.description)
 
 
 class HomePage(QWidget):

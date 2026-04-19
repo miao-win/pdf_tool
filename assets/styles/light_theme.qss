@@ -1,0 +1,110 @@
+QLabel#homeTitle {
+    font-size: 32px;
+    font-weight: bold;
+    color: #333;
+}
+
+QLabel#homeSubtitle {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+QLabel#dropHint {
+    font-size: 14px;
+    color: #999;
+    margin-top: 20px;
+}
+
+QLabel#infoLabel {
+    font-size: 14px;
+    color: #888;
+    padding: 20px;
+}
+
+QLabel#estimateLabel {
+    font-size: 12px;
+    color: #666;
+}
+
+QPushButton#primaryBtn {
+    background-color: #4a90d9;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    font-size: 16px;
+    border-radius: 6px;
+    margin-top: 10px;
+}
+
+QPushButton#primaryBtn:hover {
+    background-color: #5ba0e9;
+}
+
+QPushButton#primaryBtn:disabled {
+    background-color: #ccc;
+}
+
+QPushButton#backBtn {
+    background-color: transparent;
+    border: none;
+    color: #4a90d9;
+    font-size: 14px;
+    padding: 8px;
+}
+
+QPushButton#backBtn:hover {
+    color: #3a80c9;
+}
+
+QGroupBox {
+    font-weight: bold;
+    margin-top: 12px;
+}
+
+QGroupBox::title {
+    color: #333;
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px;
+}
+
+QLineEdit {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+}
+
+QLineEdit:focus {
+    border: 1px solid #4a90d9;
+}
+
+QListWidget {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+QProgressBar {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+    height: 20px;
+}
+
+QProgressBar::chunk {
+    background-color: #4a90d9;
+    border-radius: 3px;
+}
+
+QComboBox {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+}
+
+QRadioButton {
+    padding: 4px;
+}

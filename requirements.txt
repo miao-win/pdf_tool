@@ -2,5 +2,10 @@ PySide6
 pypdf
 pikepdf
 Pillow
-fitz
+PyMuPDF
 pyinstaller
+
+# Optional dependencies for Word/PPT conversion:
+# docx2pdf  # Required for Word to PDF on Windows/Mac (uses Microsoft Word COM)
+# comtypes  # Required for PowerPoint to PDF on Windows (uses PowerPoint COM)
+# These are optional - if not installed, the to_pdf feature will show a friendly error message

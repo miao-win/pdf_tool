@@ -183,19 +183,12 @@ class ToPDFPage(DragDropMixin, QWidget):
             self.dpi_widget.setVisible(False)
 
     def _show_export_settings(self):
-        from PySide6.QtWidgets import QInputDialog
         current_path = str(self._config.default_export_path)
-        new_path, ok = QInputDialog.getText(
-            self, '设置默认导出路径',
-            '请输入默认导出路径:',
-            QLineEdit.EchoMode.Normal,
-            current_path
+        new_dir = QFileDialog.getExistingDirectory(
+            self, '选择默认导出路径', current_path
         )
-        if ok and new_path:
-            new_path_obj = Path(new_path)
-            if not new_path_obj.parent.exists():
-                Dialogs.show_error(self, '错误', '路径无效或上级目录不存在')
-                return
+        if new_dir:
+            new_path_obj = Path(new_dir)
             self._config.default_export_path = new_path_obj
             self.default_path_label.setText(self._truncate_path(new_path_obj))
             Dialogs.show_success(self, '设置成功', f'默认导出路径已设置为:\n{new_path_obj}')

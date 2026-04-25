@@ -1,6 +1,6 @@
-# PDF Tool
+# PDF 工具箱
 
-基于 PySide6 的 PDF 处理工具，支持 PDF 拆分、合并、压缩以及多种扩展功能，提供直观的图形界面和流畅的用户体验。
+基于 PySide6 的 PDF 处理工具，支持 PDF 拆分、合并、压缩以及多种扩展功能。提供三主题一键切换的现代化界面，全部 UI 元素采用 QPainter 自绘 + Unicode，零外部图标纹理资源。
 
 ## 功能特点
 
@@ -59,10 +59,39 @@
 
 ### 界面功能
 
-- **主题切换**：支持浅色和深色主题，点击右上角主题按钮切换
+- **三主题切换**：简约风 / 水墨风 / 科幻风，一键切换，全部自绘
+- **无边框窗口**：自定义标题栏，支持拖拽移动
+- **侧边栏导航**：220px 宽，支持折叠为 56px 图标模式（窗口<1100px 自动折叠）
 - **拖拽操作**：支持直接将文件拖拽到窗口中进行处理
-- **进度显示**：处理过程中显示实时进度条
+- **进度显示**：处理过程中显示实时进度条（三主题不同风格）
 - **文件预览**：支持预览 PDF 页面内容
+- **Toast 反馈**：操作结果即时提示，三主题各自风格
+
+## 三主题视觉系统
+
+| 特性 | 简约风 | 水墨风 | 科幻风 |
+|------|--------|--------|--------|
+| 主背景 | `#FAFAFA` | `#F4EEDF` | `#0A0E14` |
+| 卡片 | `#FFFFFF` 圆角10px | `#FBF6E9` 圆角4px+墨晕 | `#111826` 圆角2px+网格 |
+| 侧边栏 | `#F2F2F4` | `#EBE3CF` | `#0D131D` |
+| 强调色 | `#2E6BE6` | `#8B2B2B` | `#00E5FF` |
+| 字体 | Inter/PingFang SC | 霞鹜文楷/Noto Serif | Orbitron/Rajdhani |
+| 按钮 | 蓝填充圆角6px | 朱砂印章块 | 切角矩形+发光 |
+| 纹理 | 无 | 宣纸噪点+纤维线 | 40px网格+暗角+扫描条 |
+| 图标风格 | 线稿1.5px RoundCap | 飞白描边FlatCap | 青蓝SquareCap+外发光 |
+
+### 自绘图标系统
+
+14+ 枚图标统一 `IconWidget(name, size, theme)`：
+- 简约：线稿 1.5px RoundCap，随 palette 着色
+- 水墨：同路径但描边 1.2–2.2 非均匀分段（FlatCap+透明度梯度模拟飞白）
+- 科幻：路径外六边形框，青蓝 `#00E5FF` 1.2px SquareCap，可选外发光
+
+### 背景纹理（纯代码生成）
+
+- **水墨宣纸**：固定种子撒 800–1200 个 1–2px 噪点 + 2–3 条淡贝塞尔纤维线
+- **科幻网格**：40px 步长青蓝细线 + 径向暗角；扫描条 4px QPropertyAnimation y 轴循环
+- **简约**：纯色面
 
 ## 技术栈
 
@@ -78,49 +107,63 @@
 
 ```
 pdf_tool/
-├── core/               # 核心 PDF 操作模块
-│   ├── split.py        # PDF 拆分功能实现
-│   ├── merge.py        # PDF 合并功能实现
-│   ├── compress.py     # PDF 压缩功能实现
-│   ├── page_editor.py  # 页面旋转与删除
-│   ├── pdf_to_image.py # PDF 转图片
-│   ├── to_pdf.py       # 多格式转 PDF
-│   ├── plugins.py      # 扩展功能插件系统
-│   └── __init__.py     # 模块初始化，包含基类定义
-├── ui/                 # 用户界面模块
-│   ├── main_window.py  # 主窗口容器
-│   ├── home_page.py    # 主页/导航页面
-│   ├── split_page.py   # 拆分功能页面
-│   ├── merge_page.py   # 合并功能页面
-│   ├── compress_page.py # 压缩功能页面
-│   ├── preview_widget.py # PDF 预览组件
-│   ├── dialogs.py      # 对话框组件
-│   ├── drag_drop_mixin.py # 拖拽功能混入类
-│   └── plugins/        # 扩展功能页面
+├── core/                    # 核心 PDF 操作模块
+│   ├── split.py             # PDF 拆分功能实现
+│   ├── merge.py             # PDF 合并功能实现
+│   ├── compress.py          # PDF 压缩功能实现
+│   ├── page_editor.py       # 页面旋转与删除
+│   ├── pdf_to_image.py      # PDF 转图片
+│   ├── to_pdf.py            # 多格式转 PDF
+│   ├── plugins.py           # 扩展功能插件系统
+│   └── __init__.py          # 模块初始化，包含基类定义
+├── ui/                      # 用户界面模块
+│   ├── main_window.py       # 主窗口（标题栏+侧边栏+内容区+状态栏）
+│   ├── home_page.py         # 主页/导航页面（旧版兼容）
+│   ├── split_page.py        # 拆分功能页面
+│   ├── merge_page.py        # 合并功能页面
+│   ├── compress_page.py     # 压缩功能页面
+│   ├── preview_widget.py    # PDF 预览组件
+│   ├── dialogs.py           # 对话框组件（旧版兼容）
+│   ├── drag_drop_mixin.py   # 拖拽功能混入类
+│   ├── pages/               # 新页面目录
+│   │   └── home_page.py     # 三主题适配主页
+│   ├── widgets/             # 自绘控件目录
+│   │   ├── icon.py          # 自绘图标系统（14+ 图标）
+│   │   ├── painters.py      # InkLine/CinnabarSeal/ChamferedButton/CornerMarks/BrushArrow/NeonProgressBar
+│   │   ├── textures.py      # RicePaperTexture/SciFiGridTexture/MinimalTexture
+│   │   └── toast.py         # 三主题 Toast 组件
+│   ├── styles/              # 主题 QSS 目录
+│   │   ├── minimal.py       # 简约风 QSS
+│   │   ├── ink.py           # 水墨风 QSS
+│   │   └── scifi.py         # 科幻风 QSS
+│   ├── dialogs/             # 新对话框目录
+│   │   ├── drop_dialog.py   # 拖放选择对话框
+│   │   └── settings_dialog.py # 设置浮层+主题预览
+│   └── plugins/             # 扩展功能页面
 │       ├── page_editor_page.py
 │       ├── pdf_to_image_page.py
 │       └── to_pdf_page.py
-├── workers/            # 后台工作线程
+├── workers/                 # 后台工作线程
 │   ├── split_worker.py
 │   ├── merge_worker.py
 │   ├── compress_worker.py
 │   ├── page_editor_worker.py
 │   ├── pdf_to_image_worker.py
 │   └── to_pdf_worker.py
-├── utils/              # 工具模块
-│   ├── theme_manager.py # 主题样式管理
-│   └── config_manager.py # 配置管理（导出路径等）
-├── assets/             # 资源文件
-│   └── styles/         # QSS 样式表
+├── utils/                   # 工具模块
+│   ├── theme_manager.py     # 主题管理器（三主题切换+持久化）
+│   └── config_manager.py    # 配置管理（导出路径等）
+├── assets/                  # 资源文件
+│   └── styles/              # 旧版 QSS 样式表（兼容）
 │       ├── dark_theme.qss
 │       └── light_theme.qss
-├── main.py             # 应用入口文件
-└── build.spec          # PyInstaller 打包配置
+├── main.py                  # 应用入口文件
+└── build.spec               # PyInstaller 打包配置
 ```
 
 ## 环境要求
 
-- Python 3.11+
+- Python 3.10+
 - Windows/Linux/macOS 操作系统
 
 ### 可选依赖
@@ -132,14 +175,6 @@ Word 和 PPT 转换功能需要以下环境之一：
 - LibreOffice (Linux/Windows/Mac)
 
 ## 安装依赖
-
-可以使用以下命令安装所有依赖：
-
-```bash
-pip install PySide6 pypdf pikepdf Pillow fitz pyinstaller
-```
-
-或者使用项目根目录下的 requirements.txt 文件：
 
 ```bash
 pip install -r requirements.txt
@@ -170,6 +205,10 @@ pyinstaller build.spec
 
 ## 使用说明
 
+### 主题切换
+
+点击标题栏右侧的主题切换按钮（简约=方块/水墨=墨点/科幻=六边形），即可在三主题间循环切换。主题选择会自动保存，下次启动时恢复。
+
 ### 导出位置配置
 
 每个功能页面（拆分/合并/压缩/页面编辑等）都支持两种导出位置模式：
@@ -179,9 +218,7 @@ pyinstaller build.spec
 
 #### 设置默认导出路径
 
-有两种方式设置默认导出路径：
-
-1. **通过功能页面**：在功能页面中，点击「导出位置」分组下的「设置...」按钮
+在功能页面中，点击「导出位置」分组下的「设置...」按钮。
 
 默认导出路径初始值为 `~/Documents/PDFTool_Output`（可根据实际需求修改）。
 
@@ -235,6 +272,31 @@ pyinstaller build.spec
 4. 设置输出文件名
 5. 点击「开始转换」按钮
 
+## 设计规范
+
+### 视觉参数
+
+- 窗口尺寸：1440×860（最小 1100×700）
+- 侧边栏：220px（折叠时 56px）
+- 标题栏：44px
+- 状态栏：28px
+- 栅格间距：8px
+- 字号：20/15/13/12/13px
+
+### 主题切换机制
+
+`ThemeManager.apply(name)`：
+1. 加载 QSS 字符串
+2. `setStyleSheet` 应用样式
+3. 广播 `themeChanged` 信号
+4. 所有自绘组件 `update()` 重绘
+5. `MainWindow` 重绘纹理
+6. `QSettings` 持久化保存
+
+### 图标升级路径
+
+后续接入正式 SVG 资源，仅需为 `IconWidget` 增加「优先外部 SVG，失败回退自绘」分支，其余架构完全复用。
+
 ## 注意事项
 
 - 压缩功能会处理 PDF 中的图片，处理大型文件可能需要较长时间
@@ -257,23 +319,19 @@ pyinstaller build.spec
 ### 常见问题
 
 1. **应用无法启动**
-   
    - 检查是否安装了所有必要的依赖项
-   - 确保 Python 版本为 3.11 或更高
+   - 确保 Python 版本为 3.10 或更高
 
 2. **PDF 处理失败**
-   
    - 检查 PDF 文件是否损坏
    - 对于加密 PDF，确保有正确的密码
    - 对于大文件，确保有足够的内存
 
 3. **导出路径问题**
-   
    - 确保指定的导出路径存在且有写入权限
    - 检查默认导出路径设置是否正确
 
 4. **Word/PPT 转换失败**
-   
    - 确保系统已安装 Microsoft Office、WPS 或 LibreOffice
    - 尝试以管理员权限运行应用
 

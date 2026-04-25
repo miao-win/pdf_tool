@@ -34,3 +34,4 @@ def open_folder(path: Path) -> None:
 
 
 from .config_manager import ConfigManager, get_config_manager, ExportPathMode
+from .theme_manager import ThemeManager, get_theme_manager, apply_theme_to_widget

@@ -109,7 +109,7 @@ class MergePage(DragDropMixin, QWidget):
 
         self.preview = PreviewWidget()
         self.preview.setMinimumWidth(500)
-        content_layout.addWidget(self.preview)
+        content_layout.addWidget(self.preview, 2)
 
         main_layout.addLayout(content_layout)
 
@@ -179,6 +179,7 @@ class MergePage(DragDropMixin, QWidget):
         merge_item = MergeItem(path)
         self._merge_items.append(merge_item)
         self._update_start_button()
+        self.preview.load_pdf(path)
 
     def _remove_selected(self):
         for item in self.file_list.selectedItems():
@@ -274,6 +275,7 @@ class MergePage(DragDropMixin, QWidget):
         self.output_name_edit.clear()
         self.start_btn.setEnabled(False)
         self.progress_bar.setVisible(False)
+        self.preview.clear()
 
     def cleanup(self):
         if self._worker and self._worker.isRunning():

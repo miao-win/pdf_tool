@@ -26,6 +26,9 @@ ENV/
 env/
 .venv/
 
+# Local dependencies (pip install --target)
+.deps/
+
 # PyInstaller
 *.manifest
 *.spec

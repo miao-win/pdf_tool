@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal
 
+from ..preview_widget import PreviewWidget
 from ..drag_drop_mixin import DragDropMixin
 from ..dialogs import Dialogs
 from workers.to_pdf_worker import ToPDFWorker
@@ -129,14 +130,9 @@ class ToPDFPage(DragDropMixin, QWidget):
 
         content_layout.addLayout(left_panel, 1)
 
-        self.info_label = QLabel(
-            '🖼️ 拖拽图片文件到此处\n\n'
-            '支持格式: PNG, JPG, BMP, TIFF, WebP\n'
-            '多图合并时，拖拽调整列表顺序'
-        )
-        self.info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.info_label.setObjectName('infoLabel')
-        content_layout.addWidget(self.info_label, 1)
+        self.preview = PreviewWidget()
+        self.preview.setMinimumWidth(500)
+        content_layout.addWidget(self.preview, 2)
 
         main_layout.addLayout(content_layout)
 
@@ -159,28 +155,53 @@ class ToPDFPage(DragDropMixin, QWidget):
     def _update_ui_for_source_type(self):
         if self._source_type == 'images':
             self.desc_label.setText('选择图片文件，将它们合成为一个 PDF')
-            self.info_label.setText(
-                '🖼️ 拖拽图片文件到此处\n\n'
-                '支持格式: PNG, JPG, BMP, TIFF, WebP\n'
-                '多图合并时，拖拽调整列表顺序'
-            )
             self.dpi_widget.setVisible(True)
         elif self._source_type == 'word':
             self.desc_label.setText('将 Word 文档转换为 PDF')
-            self.info_label.setText(
-                '📄 Word 文件\n\n'
-                '支持 .docx 和 .doc 格式\n'
-                '需要 Microsoft Office / WPS / LibreOffice'
-            )
             self.dpi_widget.setVisible(False)
         elif self._source_type == 'ppt':
             self.desc_label.setText('将 PowerPoint 演示文稿转换为 PDF')
-            self.info_label.setText(
-                '📊 PPT 文件\n\n'
-                '支持 .pptx 和 .ppt 格式\n'
-                '需要 Microsoft Office / WPS / LibreOffice'
-            )
             self.dpi_widget.setVisible(False)
+
+    def _update_preview(self):
+        if not self._current_files:
+            self.preview.clear()
+            if self._source_type == 'images':
+                self.preview._placeholder.setText(
+                    '🖼️ 拖拽图片文件到左侧区域\n\n'
+                    '支持格式: PNG, JPG, BMP, TIFF, WebP\n'
+                    '多图合并时，拖拽调整列表顺序'
+                )
+            elif self._source_type == 'word':
+                self.preview._placeholder.setText(
+                    '📄 Word 文件\n\n'
+                    '支持 .docx 和 .doc 格式\n'
+                    '需要 Microsoft Office / WPS / LibreOffice'
+                )
+            elif self._source_type == 'ppt':
+                self.preview._placeholder.setText(
+                    '📊 PPT 文件\n\n'
+                    '支持 .pptx 和 .ppt 格式\n'
+                    '需要 Microsoft Office / WPS / LibreOffice'
+                )
+            self.preview._placeholder.setVisible(True)
+            return
+
+        if self._source_type == 'images':
+            self.preview.load_images(self._current_files)
+        else:
+            self.preview.clear()
+            if self._source_type == 'word':
+                self.preview._placeholder.setText(
+                    f'📄 已选择 {len(self._current_files)} 个 Word 文件\n\n'
+                    'Word 文件无法直接预览\n转换完成后可查看生成的 PDF'
+                )
+            elif self._source_type == 'ppt':
+                self.preview._placeholder.setText(
+                    f'📊 已选择 {len(self._current_files)} 个 PPT 文件\n\n'
+                    'PPT 文件无法直接预览\n转换完成后可查看生成的 PDF'
+                )
+            self.preview._placeholder.setVisible(True)
 
     def _show_export_settings(self):
         current_path = str(self._config.default_export_path)
@@ -238,6 +259,7 @@ class ToPDFPage(DragDropMixin, QWidget):
         self.file_list.addItem(item)
         self._current_files.append(path)
         self._update_start_button()
+        self._update_preview()
 
     def _remove_selected(self):
         for item in self.file_list.selectedItems():
@@ -246,11 +268,13 @@ class ToPDFPage(DragDropMixin, QWidget):
             if row < len(self._current_files):
                 self._current_files.pop(row)
         self._update_start_button()
+        self._update_preview()
 
     def _clear_list(self):
         self.file_list.clear()
         self._current_files.clear()
         self._update_start_button()
+        self._update_preview()
 
     def _update_start_button(self):
         self.start_btn.setEnabled(len(self._current_files) > 0)
@@ -262,9 +286,12 @@ class ToPDFPage(DragDropMixin, QWidget):
             Dialogs.show_error(self, '错误', '不支持的文件格式')
             return
 
-        self._source_type = detected_type if detected_type != 'mixed_image_word' else 'images'
-        self._clear_list()
-        self._update_ui_for_source_type()
+        effective_type = detected_type if detected_type != 'mixed_image_word' else 'images'
+
+        if effective_type != self._source_type:
+            self._clear_list()
+            self._source_type = effective_type
+            self._update_ui_for_source_type()
 
         for path in file_paths:
             p = Path(path)
@@ -279,7 +306,7 @@ class ToPDFPage(DragDropMixin, QWidget):
         files = []
         for i in range(self.file_list.count()):
             item = self.file_list.item(i)
-            path = item.data(Qt.ItemDataRole.UserRole)
+            path = item.getData(Qt.ItemDataRole.UserRole)
             if path:
                 files.append(path)
         self._current_files = files
@@ -357,6 +384,7 @@ class ToPDFPage(DragDropMixin, QWidget):
         self.status_label.clear()
         self.progress_bar.setVisible(False)
         self._update_ui_for_source_type()
+        self.preview.clear()
 
     def cleanup(self):
         if self._worker and self._worker.isRunning():

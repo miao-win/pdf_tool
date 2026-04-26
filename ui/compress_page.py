@@ -118,7 +118,7 @@ class CompressPage(DragDropMixin, QWidget):
 
         self.preview = PreviewWidget()
         self.preview.setMinimumWidth(500)
-        content_layout.addWidget(self.preview)
+        content_layout.addWidget(self.preview, 2)
 
         main_layout.addLayout(content_layout)
 
@@ -192,6 +192,7 @@ class CompressPage(DragDropMixin, QWidget):
             f'已加载: {path.name}\n原始大小: {format_file_size(original_size)}'
         )
         self.start_btn.setEnabled(True)
+        self.preview.load_pdf(path)
 
     def _on_files_dropped(self, file_paths: list):
         if file_paths:
@@ -261,6 +262,7 @@ class CompressPage(DragDropMixin, QWidget):
         self.start_btn.setEnabled(False)
         self.status_label.clear()
         self.progress_bar.setVisible(False)
+        self.preview.clear()
 
     def cleanup(self):
         if self._worker and self._worker.isRunning():

@@ -161,7 +161,7 @@ class PDFToImagePage(DragDropMixin, QWidget):
 
         self.preview = PreviewWidget()
         self.preview.setMinimumWidth(500)
-        content_layout.addWidget(self.preview)
+        content_layout.addWidget(self.preview, 2)
 
         main_layout.addLayout(content_layout)
 
@@ -233,6 +233,7 @@ class PDFToImagePage(DragDropMixin, QWidget):
         self.file_path_edit.setText(str(path))
         self.start_btn.setEnabled(True)
         self.status_label.setText(f'已加载: {path.name} ({path.stat().st_size // 1024} KB)')
+        self.preview.load_pdf(path)
 
     def _on_files_dropped(self, file_paths: list):
         if file_paths:
@@ -318,6 +319,7 @@ class PDFToImagePage(DragDropMixin, QWidget):
         self.start_btn.setEnabled(False)
         self.status_label.clear()
         self.progress_bar.setVisible(False)
+        self.preview.clear()
 
     def cleanup(self):
         if self._worker and self._worker.isRunning():

@@ -225,6 +225,50 @@ QCheckBox::indicator:checked {
     background-color: #8B2B2B;
     border-color: #8B2B2B;
 }
+QLabel#previewPlaceholder {
+    color: #A89B80;
+    font-size: 14px;
+}
+QWidget#previewNavBar {
+    background-color: #FBF6E9;
+    border-top: 1px solid #D4C9B0;
+}
+QPushButton#navBtn {
+    background-color: #F0E9D8;
+    border: 1px solid #C4B9A0;
+    border-radius: 2px;
+    padding: 4px 8px;
+    font-size: 14px;
+    min-width: 32px;
+}
+QPushButton#navBtn:hover {
+    background-color: #E8DFC8;
+}
+QPushButton#navBtn:disabled {
+    background-color: #F4EEDF;
+    color: #C4B9A0;
+    border-color: #D4C9B0;
+}
+QLabel#previewPageLabel {
+    color: #5C5650;
+    font-size: 13px;
+    font-weight: 500;
+}
+QSpinBox#previewPageSpin {
+    background-color: #FBF6E9;
+    border: none;
+    border-bottom: 1px solid #B8A88A;
+    border-radius: 0px;
+    padding: 2px 4px;
+    font-size: 13px;
+}
+QSpinBox#previewPageSpin:focus {
+    border-bottom: 2px solid #8B2B2B;
+}
+QScrollArea#previewScrollArea {
+    background-color: #F4EEDF;
+    border: none;
+}
 QToolTip {
     background-color: #1C1B1A;
     color: #F4EEDF;

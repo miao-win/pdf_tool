@@ -231,7 +231,6 @@ class PageEditorPage(DragDropMixin, QWidget):
 
         self._current_file = path
         self.file_path_edit.setText(str(path))
-        self.preview.load_pdf(path)
         self.rotate_btn.setEnabled(True)
         self.delete_btn.setEnabled(True)
         self.status_label.setText(f'已加载: {path.name} ({path.stat().st_size // 1024} KB)')
@@ -239,13 +238,6 @@ class PageEditorPage(DragDropMixin, QWidget):
     def _on_files_dropped(self, file_paths: list):
         if file_paths:
             self._load_file(Path(file_paths[0]))
-
-    def _get_selected_pages(self) -> str:
-        pages = self.preview.get_selected_pages()
-        if pages:
-            page_list = sorted([p + 1 for p in pages])
-            return ','.join(map(str, page_list))
-        return ''
 
     def _validate_page_spec(self, page_spec: str, total_pages: int) -> tuple[bool, str]:
         if not page_spec or not page_spec.strip():
@@ -373,8 +365,21 @@ class PageEditorPage(DragDropMixin, QWidget):
     def refresh_export_settings(self):
         self.default_path_label.setText(self._truncate_path(self._config.default_export_path))
 
+    def reset(self):
+        self._current_file = None
+        self._selected_pages.clear()
+        self.file_path_edit.clear()
+        self.rotate_range_edit.clear()
+        self.delete_range_edit.clear()
+        self.angle_combo.setCurrentIndex(0)
+        self.clockwise_btn.setChecked(True)
+        self.rotate_all_pages.setChecked(True)
+        self.rotate_btn.setEnabled(False)
+        self.delete_btn.setEnabled(False)
+        self.status_label.clear()
+        self.progress_bar.setVisible(False)
+
     def cleanup(self):
         if self._worker and self._worker.isRunning():
             self._worker.cancel()
             self._worker.wait()
-        self.preview.close_pdf()

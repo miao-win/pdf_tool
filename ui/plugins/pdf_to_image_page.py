@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal
 
+from ..preview_widget import PreviewWidget
 from ..drag_drop_mixin import DragDropMixin
 from ..dialogs import Dialogs
 from workers.pdf_to_image_worker import PDFToImageWorker
@@ -158,15 +159,9 @@ class PDFToImagePage(DragDropMixin, QWidget):
 
         content_layout.addLayout(left_panel, 1)
 
-        info_label = QLabel(
-            '📄 拖拽 PDF 文件到此处\n\n'
-            '输出文件命名: {原文件名}_page_1.png\n'
-            '           {原文件名}_page_2.png\n'
-            '           ...'
-        )
-        info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        info_label.setObjectName('infoLabel')
-        content_layout.addWidget(info_label, 1)
+        self.preview = PreviewWidget()
+        self.preview.setMinimumWidth(500)
+        content_layout.addWidget(self.preview)
 
         main_layout.addLayout(content_layout)
 
@@ -312,6 +307,17 @@ class PDFToImagePage(DragDropMixin, QWidget):
 
     def refresh_export_settings(self):
         self.default_path_label.setText(self._truncate_path(self._config.default_export_path))
+
+    def reset(self):
+        self._current_file = None
+        self.file_path_edit.clear()
+        self.format_combo.setCurrentIndex(0)
+        self.dpi_combo.setCurrentIndex(1)
+        self.page_all_radio.setChecked(True)
+        self.page_range_edit.clear()
+        self.start_btn.setEnabled(False)
+        self.status_label.clear()
+        self.progress_bar.setVisible(False)
 
     def cleanup(self):
         if self._worker and self._worker.isRunning():

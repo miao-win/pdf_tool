@@ -347,6 +347,17 @@ class ToPDFPage(DragDropMixin, QWidget):
     def refresh_export_settings(self):
         self.default_path_label.setText(self._truncate_path(self._config.default_export_path))
 
+    def reset(self):
+        self._current_files.clear()
+        self._source_type = 'images'
+        self.file_list.clear()
+        self.output_name_edit.clear()
+        self.dpi_combo.setCurrentIndex(1)
+        self.start_btn.setEnabled(False)
+        self.status_label.clear()
+        self.progress_bar.setVisible(False)
+        self._update_ui_for_source_type()
+
     def cleanup(self):
         if self._worker and self._worker.isRunning():
             self._worker.cancel()

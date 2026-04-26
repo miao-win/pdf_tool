@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QDesktopServices
 
 from core.merge import MergeItem
+from .preview_widget import PreviewWidget
 from .drag_drop_mixin import DragDropMixin
 from .dialogs import Dialogs
 from workers.merge_worker import MergeWorker
@@ -106,14 +107,9 @@ class MergePage(DragDropMixin, QWidget):
 
         content_layout.addLayout(left_panel, 1)
 
-        info_label = QLabel(
-            '提示: 拖拽文件到此处导入\n'
-            '支持多文件导入\n'
-            '拖拽列表中的项目可调整顺序'
-        )
-        info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        info_label.setObjectName('infoLabel')
-        content_layout.addWidget(info_label, 1)
+        self.preview = PreviewWidget()
+        self.preview.setMinimumWidth(500)
+        content_layout.addWidget(self.preview)
 
         main_layout.addLayout(content_layout)
 
@@ -270,6 +266,14 @@ class MergePage(DragDropMixin, QWidget):
 
     def refresh_export_settings(self):
         self.default_path_label.setText(self._truncate_path(self._config.default_export_path))
+
+    def reset(self):
+        self._merge_items.clear()
+        self.file_list.clear()
+        self.page_spec_edit.clear()
+        self.output_name_edit.clear()
+        self.start_btn.setEnabled(False)
+        self.progress_bar.setVisible(False)
 
     def cleanup(self):
         if self._worker and self._worker.isRunning():

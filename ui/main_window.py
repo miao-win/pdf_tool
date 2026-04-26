@@ -362,6 +362,8 @@ class ContentArea(QFrame):
 
         new_widget = self.stack.currentWidget()
         if new_widget:
+            if hasattr(new_widget, 'reset'):
+                new_widget.reset()
             effect_in = QGraphicsOpacityEffect(new_widget)
             new_widget.setGraphicsEffect(effect_in)
             effect_in.setOpacity(0.0)

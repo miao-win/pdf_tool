@@ -197,7 +197,6 @@ class SplitPage(DragDropMixin, QWidget):
 
         self._current_file = path
         self.file_path_edit.setText(str(path))
-        self.preview.load_pdf(path)
         self.start_btn.setEnabled(True)
         self.status_label.setText(f'已加载: {path.name} ({path.stat().st_size // 1024} KB)')
 
@@ -275,8 +274,18 @@ class SplitPage(DragDropMixin, QWidget):
     def refresh_export_settings(self):
         self.default_path_label.setText(self._truncate_path(self._config.default_export_path))
 
+    def reset(self):
+        self._current_file = None
+        self.file_path_edit.clear()
+        self.range_edit.clear()
+        self.pages_per_file_edit.clear()
+        self.output_name_edit.clear()
+        self.range_mode.setChecked(True)
+        self.start_btn.setEnabled(False)
+        self.status_label.clear()
+        self.progress_bar.setVisible(False)
+
     def cleanup(self):
         if self._worker and self._worker.isRunning():
             self._worker.cancel()
             self._worker.wait()
-        self.preview.close_pdf()

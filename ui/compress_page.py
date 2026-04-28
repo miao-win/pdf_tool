@@ -8,15 +8,19 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QDesktopServices
 
-from core.compress import PDFCompressor
 from .preview_widget import PreviewWidget
 from .drag_drop_mixin import DragDropMixin
+from .base_page import ExportPathMixin, BackButtonMixin
 from .dialogs import Dialogs
 from workers.compress_worker import CompressWorker
 from utils import format_file_size, get_config_manager
+from utils.constants import PREVIEW_MIN_WIDTH
+from utils.log_helper import get_logger
+
+logger = get_logger(__name__)
 
 
-class CompressPage(DragDropMixin, QWidget):
+class CompressPage(ExportPathMixin, BackButtonMixin, DragDropMixin, QWidget):
     back_clicked = Signal()
 
     def __init__(self, parent=None):
@@ -29,13 +33,7 @@ class CompressPage(DragDropMixin, QWidget):
     def _init_ui(self):
         main_layout = QVBoxLayout(self)
 
-        top_bar = QHBoxLayout()
-        back_btn = QPushButton('← 返回')
-        back_btn.setObjectName('backBtn')
-        back_btn.clicked.connect(self.back_clicked.emit)
-        top_bar.addWidget(back_btn)
-        top_bar.addStretch()
-        main_layout.addLayout(top_bar)
+        main_layout.addLayout(self._create_top_bar())
 
         content_layout = QHBoxLayout()
 
@@ -69,12 +67,8 @@ class CompressPage(DragDropMixin, QWidget):
         self.level_combo.setCurrentIndex(1)
         level_layout.addWidget(self.level_combo)
 
-        est_low = '10-20%'
-        est_medium = '30-50%'
-        est_high = '50-70%'
-
         est_label = QLabel(
-            f'预估压缩率: 低 {est_low} | 中 {est_medium} | 高 {est_high}'
+            '预估压缩率: 低 10-20% | 中 30-50% | 高 50-70%'
         )
         est_label.setObjectName('estimateLabel')
         level_layout.addWidget(est_label)
@@ -91,21 +85,7 @@ class CompressPage(DragDropMixin, QWidget):
         name_group.setLayout(name_layout)
         left_panel.addWidget(name_group)
 
-        export_group = QGroupBox('导出位置')
-        export_layout = QVBoxLayout()
-
-        default_path_layout = QHBoxLayout()
-        default_path_layout.addWidget(QLabel('默认路径:'))
-        self.default_path_label = QLabel(self._truncate_path(self._config.default_export_path))
-        self.default_path_label.setObjectName('pathLabel')
-        default_path_layout.addWidget(self.default_path_label, 1)
-
-        settings_btn = QPushButton('设置...')
-        settings_btn.clicked.connect(self._show_export_settings)
-        default_path_layout.addWidget(settings_btn)
-        export_layout.addLayout(default_path_layout)
-
-        export_group.setLayout(export_layout)
+        export_group, _ = self._create_export_group()
         left_panel.addWidget(export_group)
 
         self.start_btn = QPushButton('开始压缩')
@@ -117,7 +97,7 @@ class CompressPage(DragDropMixin, QWidget):
         content_layout.addLayout(left_panel, 1)
 
         self.preview = PreviewWidget()
-        self.preview.setMinimumWidth(500)
+        self.preview.setMinimumWidth(PREVIEW_MIN_WIDTH)
         content_layout.addWidget(self.preview, 2)
 
         main_layout.addLayout(content_layout)
@@ -131,46 +111,6 @@ class CompressPage(DragDropMixin, QWidget):
         main_layout.addWidget(self.status_label)
 
         self.set_drag_target_callback(self._on_files_dropped)
-
-    def _truncate_path(self, path: Path, max_len: int = 30) -> str:
-        path_str = str(path)
-        if len(path_str) <= max_len:
-            return path_str
-        return '...' + path_str[-(max_len - 3):]
-
-    def _show_export_settings(self):
-        current_path = str(self._config.default_export_path)
-        new_dir = QFileDialog.getExistingDirectory(
-            self, '选择默认导出路径', current_path
-        )
-        if new_dir:
-            new_path_obj = Path(new_dir)
-            self._config.default_export_path = new_path_obj
-            self.default_path_label.setText(self._truncate_path(new_path_obj))
-            Dialogs.show_success(self, '设置成功', f'默认导出路径已设置为:\n{new_path_obj}')
-
-    def _get_output_dir(self) -> tuple[Path, bool]:
-        func_mode = self._config.get_function_export_mode('compress')
-        if func_mode == ExportPathMode.ASK_USER:
-            path, chosen = QFileDialog.getSaveFileName(
-                self, '选择导出位置', '', 'PDF Files (*.pdf)'
-            )
-            if not chosen:
-                return None, False
-            output_path = Path(path)
-            return output_path.parent, True
-        else:
-            if not self._config.is_valid_export_path(self._config.default_export_path):
-                Dialogs.show_error(
-                    self, '路径无效',
-                    f'默认导出路径无效:\n{self._config.default_export_path}\n\n请重新设置有效的导出路径。'
-                )
-                return None, False
-            success, output_dir = self._config.ensure_export_path_exists()
-            if not success:
-                Dialogs.show_error(self, '错误', f'无法创建导出目录:\n{output_dir}')
-                return None, False
-            return output_dir, True
 
     def _browse_file(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -202,7 +142,7 @@ class CompressPage(DragDropMixin, QWidget):
         if not self._current_file:
             return
 
-        output_dir, proceed = self._get_output_dir()
+        output_dir, proceed = self._get_output_dir('compress')
         if not proceed:
             return
 
@@ -250,9 +190,6 @@ class CompressPage(DragDropMixin, QWidget):
         else:
             Dialogs.show_error(self, '错误', str(result))
             self.status_label.setText('压缩失败')
-
-    def refresh_export_settings(self):
-        self.default_path_label.setText(self._truncate_path(self._config.default_export_path))
 
     def reset(self):
         self._current_file = None

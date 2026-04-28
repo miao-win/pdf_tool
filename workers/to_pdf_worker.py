@@ -3,6 +3,9 @@ from typing import List, Optional
 
 from core.to_pdf import ToPDFConverter
 from . import BaseWorker
+from utils.log_helper import get_logger
+
+logger = get_logger(__name__)
 
 
 class ToPDFWorker(BaseWorker):
@@ -13,6 +16,7 @@ class ToPDFWorker(BaseWorker):
             source_type: str,
             output_name: Optional[str] = None,
             dpi: int = 150,
+            operation: ToPDFConverter = None,
             parent=None
     ):
         super().__init__(parent)
@@ -21,13 +25,14 @@ class ToPDFWorker(BaseWorker):
         self.source_type = source_type
         self.output_name = output_name
         self.dpi = dpi
+        self._operation = operation
 
     def run(self):
         try:
             self.status.emit('正在转换...')
             self.progress.emit(10)
 
-            converter = ToPDFConverter(self.input_paths)
+            converter = self._operation or ToPDFConverter(self.input_paths)
             self.progress.emit(30)
 
             if self.source_type == 'images':
@@ -63,4 +68,5 @@ class ToPDFWorker(BaseWorker):
             self.finished.emit(result.success, result)
 
         except Exception as e:
+            logger.error("ToPDFWorker error: %s", e, exc_info=True)
             self.finished.emit(False, str(e))

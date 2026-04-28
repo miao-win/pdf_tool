@@ -13,6 +13,9 @@ from ui.plugins.page_editor_page import PageEditorPage
 from ui.plugins.pdf_to_image_page import PDFToImagePage
 from ui.plugins.to_pdf_page import ToPDFPage
 from utils.theme_manager import get_theme_manager
+from utils.log_helper import get_logger
+
+logger = get_logger(__name__)
 
 
 def get_app_icon() -> QIcon:
@@ -22,13 +25,23 @@ def get_app_icon() -> QIcon:
     return QIcon()
 
 
+PAGE_DEFINITIONS = [
+    ('home', HomePage),
+    ('split', SplitPage),
+    ('merge', MergePage),
+    ('compress', CompressPage),
+    ('page_editor', PageEditorPage),
+    ('pdf_to_image', PDFToImagePage),
+    ('to_pdf', ToPDFPage),
+]
+
+
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName('PDF Tool')
     app.setOrganizationName('PDFTool')
     app.setStyle('Fusion')
 
-    # 初始化主题管理器
     theme_manager = get_theme_manager()
     theme_manager.init_app(app)
 
@@ -36,41 +49,26 @@ def main():
     app.main_window = main_window
     main_window.setWindowIcon(get_app_icon())
 
-    # 创建页面
-    home_page = HomePage()
-    split_page = SplitPage()
-    merge_page = MergePage()
-    compress_page = CompressPage()
-    page_editor_page = PageEditorPage()
-    pdf_to_image_page = PDFToImagePage()
-    to_pdf_page = ToPDFPage()
+    pages = {}
+    for page_id, page_class in PAGE_DEFINITIONS:
+        page = page_class()
+        main_window.add_page(page, page_id)
+        pages[page_id] = page
 
-    # 添加页面到主窗口
-    main_window.add_page(home_page, 'home')
-    main_window.add_page(split_page, 'split')
-    main_window.add_page(merge_page, 'merge')
-    main_window.add_page(compress_page, 'compress')
-    main_window.add_page(page_editor_page, 'page_editor')
-    main_window.add_page(pdf_to_image_page, 'pdf_to_image')
-    main_window.add_page(to_pdf_page, 'to_pdf')
+    home_page = pages['home']
+    for page_id in ['split', 'merge', 'compress', 'page_editor', 'pdf_to_image', 'to_pdf']:
+        signal = getattr(home_page, f'{page_id}_clicked', None)
+        if signal:
+            signal.connect(lambda pid=page_id: main_window.set_page(pid))
 
-    # 连接信号
-    home_page.split_clicked.connect(lambda: main_window.set_page(1))
-    home_page.merge_clicked.connect(lambda: main_window.set_page(2))
-    home_page.compress_clicked.connect(lambda: main_window.set_page(3))
-    home_page.page_editor_clicked.connect(lambda: main_window.set_page(4))
-    home_page.pdf_to_image_clicked.connect(lambda: main_window.set_page(5))
-    home_page.to_pdf_clicked.connect(lambda: main_window.set_page(6))
-
-    # 返回主页
-    split_page.back_clicked.connect(lambda: main_window.set_page(0))
-    merge_page.back_clicked.connect(lambda: main_window.set_page(0))
-    compress_page.back_clicked.connect(lambda: main_window.set_page(0))
-    page_editor_page.back_clicked.connect(lambda: main_window.set_page(0))
-    pdf_to_image_page.back_clicked.connect(lambda: main_window.set_page(0))
-    to_pdf_page.back_clicked.connect(lambda: main_window.set_page(0))
+    for page_id, page in pages.items():
+        if page_id == 'home':
+            continue
+        if hasattr(page, 'back_clicked'):
+            page.back_clicked.connect(lambda: main_window.set_page('home'))
 
     main_window.show()
+    logger.info("PDF Tool started successfully")
     sys.exit(app.exec())
 
 

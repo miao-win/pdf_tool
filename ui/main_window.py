@@ -1,7 +1,3 @@
-"""
-主窗口：标题栏+侧边栏+内容区+状态栏
-三主题一键切换，全部自绘
-"""
 from PySide6.QtWidgets import (
     QWidget, QMainWindow, QVBoxLayout, QHBoxLayout, QLabel,
     QStackedWidget, QFrame, QSizePolicy, QApplication, QGraphicsOpacityEffect,
@@ -11,16 +7,22 @@ from PySide6.QtCore import Qt, Signal, QSize, QPropertyAnimation, QEasingCurve, 
 from PySide6.QtGui import QPainter, QPainterPath, QColor, QPen, QFont, QLinearGradient
 
 from utils.theme_manager import get_theme_manager, apply_theme_to_widget
+from utils.page_registry import PageRegistry
+from utils.constants import (
+    SIDEBAR_EXPANDED_WIDTH, SIDEBAR_COLLAPSED_WIDTH, SIDEBAR_COLLAPSE_THRESHOLD,
+    TITLE_BAR_HEIGHT, STATUS_BAR_HEIGHT, SIDEBAR_ITEM_HEIGHT,
+    SIDEBAR_MARGIN, SIDEBAR_SPACING, PAGE_ANIM_OUT_DURATION, PAGE_ANIM_IN_DURATION,
+    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT,
+)
 from ui.widgets.icon import IconWidget
 from ui.widgets.painters import CinnabarSeal, CornerMarks, NeonProgressBar
 from ui.widgets.textures import RicePaperTexture, SciFiGridTexture, MinimalTexture
 
 
 class TitleBar(QFrame):
-    """自定义标题栏 44px"""
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(44)
+        self.setFixedHeight(TITLE_BAR_HEIGHT)
         self.setObjectName('titleBar')
         self.theme = 'minimal'
         self._init_ui()
@@ -30,7 +32,6 @@ class TitleBar(QFrame):
         layout.setContentsMargins(12, 0, 12, 0)
         layout.setSpacing(8)
 
-        # Logo
         self.logo_widget = QWidget(self)
         self.logo_widget.setFixedSize(28, 28)
         self.logo_widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
@@ -43,7 +44,6 @@ class TitleBar(QFrame):
 
         layout.addStretch()
 
-        # 主题切换按钮
         self.theme_btn = QWidget(self)
         self.theme_btn.setFixedSize(28, 28)
         self.theme_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -51,7 +51,6 @@ class TitleBar(QFrame):
         self.theme_btn.setAutoFillBackground(False)
         layout.addWidget(self.theme_btn)
 
-        # 窗口控制按钮
         self.min_btn = QWidget(self)
         self.min_btn.setFixedSize(28, 28)
         self.min_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -82,13 +81,11 @@ class TitleBar(QFrame):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # 绘制 Logo
         if self.theme == 'ink':
             seal = CinnabarSeal('工', 24)
             seal.set_theme('ink')
             seal.render(p, QPoint(2, 10))
         elif self.theme == 'scifi':
-            # 六边形 + PDF
             cx, cy = 14, 22
             r = 10
             path = QPainterPath()
@@ -110,14 +107,12 @@ class TitleBar(QFrame):
             p.setPen(QColor('#00E5FF'))
             p.drawText(6, 26, 'PDF')
         else:
-            # 简约：圆角方块+蓝线
             pen = QPen(QColor('#2E6BE6'), 2)
             p.setPen(pen)
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawRoundedRect(4, 10, 20, 20, 4, 4)
             p.drawLine(8, 18, 20, 18)
 
-        # 绘制主题切换按钮
         btn_x = self.width() - 112
         if self.theme == 'ink':
             p.setPen(QPen(QColor('#8B2B2B'), 2))
@@ -145,22 +140,18 @@ class TitleBar(QFrame):
             p.setBrush(QColor('#2E6BE6'))
             p.drawRoundedRect(btn_x + 6, 10, 16, 16, 3, 3)
 
-        # 最小化按钮
         p.setPen(QPen(QColor('#57606A' if self.theme == 'minimal' else '#5C5650' if self.theme == 'ink' else '#8FAEC8'), 2))
         p.drawLine(self.width() - 80, 22, self.width() - 64, 22)
 
-        # 最大化按钮
         p.setPen(QPen(QColor('#57606A' if self.theme == 'minimal' else '#5C5650' if self.theme == 'ink' else '#8FAEC8'), 2))
         p.drawRect(self.width() - 52, 14, 12, 12)
 
-        # 关闭按钮
         p.setPen(QPen(QColor('#DC2626' if self.theme == 'minimal' else '#8B2B2B' if self.theme == 'ink' else '#FF2E9A'), 2))
         p.drawLine(self.width() - 28, 14, self.width() - 12, 30)
         p.drawLine(self.width() - 12, 14, self.width() - 28, 30)
 
 
 class SidebarItem(QFrame):
-    """侧边栏项目"""
     clicked = Signal(str)
 
     def __init__(self, icon_name: str, text: str, item_id: str, parent=None):
@@ -171,7 +162,7 @@ class SidebarItem(QFrame):
         self.theme = 'minimal'
         self._selected = False
         self._hovered = False
-        self.setFixedHeight(44)
+        self.setFixedHeight(SIDEBAR_ITEM_HEIGHT)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def set_theme(self, theme: str):
@@ -217,7 +208,6 @@ class SidebarItem(QFrame):
                 font.setBold(True)
                 p.setFont(font)
             elif self._hovered:
-                # 墨线波浪
                 pen = QPen(QColor('#B8A88A'), 1)
                 pen.setCapStyle(Qt.PenCapStyle.FlatCap)
                 p.setPen(pen)
@@ -235,17 +225,14 @@ class SidebarItem(QFrame):
                 font = QFont("Rajdhani", 13)
                 font.setBold(True)
                 p.setFont(font)
-                # ▸ 符号
                 p.drawText(w - 20, h//2 + 5, '▸')
             elif self._hovered:
                 p.fillRect(0, 0, w, h, QColor(0, 229, 255, 8))
             p.setPen(QColor('#E2F3FF'))
 
-        # 图标
         icon = IconWidget(self.icon_name, 20, self.theme)
         icon.render(p, QPoint(16, h//2 - 10))
 
-        # 文字
         if not getattr(self.parent(), '_collapsed', False):
             font = QFont()
             font.setPointSize(13)
@@ -260,13 +247,12 @@ class SidebarItem(QFrame):
 
 
 class Sidebar(QFrame):
-    """侧边栏 220px"""
     item_clicked = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName('sidebar')
-        self.setFixedWidth(220)
+        self.setFixedWidth(SIDEBAR_EXPANDED_WIDTH)
         self.theme = 'minimal'
         self._collapsed = False
         self._items = {}
@@ -274,8 +260,8 @@ class Sidebar(QFrame):
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 8, 0, 8)
-        layout.setSpacing(4)
+        layout.setContentsMargins(0, SIDEBAR_MARGIN, 0, SIDEBAR_MARGIN)
+        layout.setSpacing(SIDEBAR_SPACING)
 
         items = [
             ('home', '主页', 'home'),
@@ -300,7 +286,6 @@ class Sidebar(QFrame):
         self.theme_btn.setFixedHeight(36)
         layout.addWidget(self.theme_btn)
 
-        # 设置项
         settings_item = SidebarItem('settings', '设置', 'settings')
         settings_item.clicked.connect(self.item_clicked.emit)
         layout.addWidget(settings_item)
@@ -318,7 +303,7 @@ class Sidebar(QFrame):
 
     def set_collapsed(self, collapsed: bool):
         self._collapsed = collapsed
-        self.setFixedWidth(56 if collapsed else 220)
+        self.setFixedWidth(SIDEBAR_COLLAPSED_WIDTH if collapsed else SIDEBAR_EXPANDED_WIDTH)
         for item in self._items.values():
             item.update()
 
@@ -353,7 +338,7 @@ class ContentArea(QFrame):
             effect_out = QGraphicsOpacityEffect(current)
             current.setGraphicsEffect(effect_out)
             self._anim_out = QPropertyAnimation(effect_out, b'opacity')
-            self._anim_out.setDuration(100)
+            self._anim_out.setDuration(PAGE_ANIM_OUT_DURATION)
             self._anim_out.setStartValue(1.0)
             self._anim_out.setEndValue(0.0)
             self._anim_out.start()
@@ -368,7 +353,7 @@ class ContentArea(QFrame):
             new_widget.setGraphicsEffect(effect_in)
             effect_in.setOpacity(0.0)
             self._anim_in = QPropertyAnimation(effect_in, b'opacity')
-            self._anim_in.setDuration(150)
+            self._anim_in.setDuration(PAGE_ANIM_IN_DURATION)
             self._anim_in.setStartValue(0.0)
             self._anim_in.setEndValue(1.0)
             self._anim_in.setEasingCurve(QEasingCurve.Type.OutCubic)
@@ -376,10 +361,9 @@ class ContentArea(QFrame):
 
 
 class StatusBar(QFrame):
-    """状态栏 28px"""
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(28)
+        self.setFixedHeight(STATUS_BAR_HEIGHT)
         self.setObjectName('statusBar')
         self.theme = 'minimal'
         self._init_ui()
@@ -412,16 +396,18 @@ class StatusBar(QFrame):
 
 
 class MainWindow(QMainWindow):
-    """主窗口"""
     def __init__(self):
         super().__init__()
         self.setWindowTitle('PDF 工具箱')
-        self.setMinimumSize(1100, 700)
-        self.resize(1440, 860)
+        self.setMinimumSize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
+        self.resize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
 
         self.theme_manager = get_theme_manager()
         self.theme_manager.theme_changed.connect(self._on_theme_changed)
         self.theme = self.theme_manager.current_theme
+
+        self.page_registry = PageRegistry(self)
+        self.page_registry.page_requested.connect(self._on_page_requested)
 
         self._init_ui()
         self._setup_textures()
@@ -434,23 +420,19 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # 主体
         body = QHBoxLayout()
         body.setContentsMargins(0, 0, 0, 0)
         body.setSpacing(0)
 
-        # 侧边栏
         self.sidebar = Sidebar()
         self.sidebar.item_clicked.connect(self._on_sidebar_item_clicked)
         body.addWidget(self.sidebar)
 
-        # 内容区
         self.content = ContentArea()
         body.addWidget(self.content, 1)
 
         layout.addLayout(body, 1)
 
-        # 状态栏
         self.status_bar = StatusBar()
         layout.addWidget(self.status_bar)
 
@@ -473,16 +455,15 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         w, h = self.width(), self.height()
-        sb_h = 28
-        content_h = h - sb_h
+        content_h = h - STATUS_BAR_HEIGHT
 
         self.rice_paper.setGeometry(0, 0, w, content_h)
         self.scifi_grid.setGeometry(0, 0, w, content_h)
         self.minimal_tex.setGeometry(0, 0, w, content_h)
 
-        if w < 1100 and not self.sidebar._collapsed:
+        if w < SIDEBAR_COLLAPSE_THRESHOLD and not self.sidebar._collapsed:
             self.sidebar.set_collapsed(True)
-        elif w >= 1100 and self.sidebar._collapsed:
+        elif w >= SIDEBAR_COLLAPSE_THRESHOLD and self.sidebar._collapsed:
             self.sidebar.set_collapsed(False)
 
     def _on_theme_changed(self, theme_name: str):
@@ -491,12 +472,10 @@ class MainWindow(QMainWindow):
         self.content.set_theme(theme_name)
         self.status_bar.set_theme(theme_name)
 
-        # 纹理可见性
         self.rice_paper.setVisible(theme_name == 'ink')
         self.scifi_grid.setVisible(theme_name == 'scifi')
         self.minimal_tex.setVisible(theme_name == 'minimal')
 
-        # 递归应用主题
         apply_theme_to_widget(self, theme_name)
 
     def _on_sidebar_item_clicked(self, item_id: str):
@@ -506,23 +485,21 @@ class MainWindow(QMainWindow):
             dialog = SettingsDialog(self)
             dialog.exec()
         else:
-            # 切换页面
-            page_map = {
-                'home': 0,
-                'split': 1,
-                'merge': 2,
-                'compress': 3,
-                'page_editor': 4,
-                'pdf_to_image': 5,
-                'to_pdf': 6,
-            }
-            if item_id in page_map:
-                self.content.set_page(page_map[item_id])
+            self.page_registry.navigate_to(item_id)
+
+    def _on_page_requested(self, page_id: str):
+        index = self.page_registry.get_index(page_id)
+        if index >= 0:
+            self.content.set_page(index)
 
     def add_page(self, widget, name: str):
+        self.page_registry.register(name, widget)
         self.content.add_page(widget, name)
 
-    def set_page(self, index: int):
+    def set_page(self, page_id: str):
+        self.page_registry.navigate_to(page_id)
+
+    def set_page_by_index(self, index: int):
         self.content.set_page(index)
 
     def showEvent(self, event):

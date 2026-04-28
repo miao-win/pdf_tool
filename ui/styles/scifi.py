@@ -78,7 +78,6 @@ QPushButton#primaryBtn {
 }
 QPushButton#primaryBtn:hover {
     background-color: rgba(0, 229, 255, 0.2);
-    box-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
 }
 QPushButton#primaryBtn:pressed {
     background-color: rgba(0, 229, 255, 0.08);
@@ -110,7 +109,6 @@ QLineEdit {
 }
 QLineEdit:focus {
     border: 1px solid #00E5FF;
-    box-shadow: 0 0 6px rgba(0, 229, 255, 0.2);
 }
 QComboBox {
     background-color: #162236;
@@ -213,7 +211,6 @@ QSlider::handle:horizontal {
     background-color: #00E5FF;
     border-radius: 2px;
     margin: -5px 0;
-    box-shadow: 0 0 4px rgba(0, 229, 255, 0.5);
 }
 QSlider::sub-page:horizontal {
     background-color: #00E5FF;

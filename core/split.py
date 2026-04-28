@@ -4,6 +4,10 @@ from typing import List, Union
 from pypdf import PdfReader, PdfWriter
 
 from . import PDFOperationBase, PDFOperationResult
+from utils.pdf_cache import get_pdf_cache
+from utils.log_helper import get_logger
+
+logger = get_logger(__name__)
 
 
 class PDFSplitter(PDFOperationBase):
@@ -15,13 +19,17 @@ class PDFSplitter(PDFOperationBase):
             pages_per_file: int = None,
             output_name: str = None
     ) -> PDFOperationResult:
-        reader = PdfReader(str(self.input_path))
+        try:
+            reader = PdfReader(str(self.input_path))
+        except Exception as e:
+            logger.error("Failed to open PDF %s: %s", self.input_path, e, exc_info=True)
+            return PDFOperationResult(success=False, error_message=f'无法打开PDF文件: {e}')
+
         total_pages = len(reader.pages)
         output_files = []
 
         base_name = output_name if output_name else self.input_path.stem
 
-        # 创建子文件夹来存放拆分的文件
         output_subdir = output_dir / base_name
         output_subdir.mkdir(parents=True, exist_ok=True)
 
@@ -60,14 +68,25 @@ class PDFSplitter(PDFOperationBase):
             )
 
         except Exception as e:
+            logger.error("Split operation failed: %s", e, exc_info=True)
             return PDFOperationResult(
                 success=False,
                 error_message=str(e)
             )
 
     def get_page_count(self) -> int:
-        reader = PdfReader(str(self.input_path))
-        return len(reader.pages)
+        cache = get_pdf_cache()
+        cached = cache.get_page_count(self.input_path)
+        if cached is not None:
+            return cached
+
+        try:
+            reader = PdfReader(str(self.input_path))
+            count = len(reader.pages)
+            return count
+        except Exception as e:
+            logger.warning("Failed to get page count for %s: %s", self.input_path, e)
+            return 0
 
     def split_by_ranges(
             self,

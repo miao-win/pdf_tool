@@ -1,9 +1,10 @@
 from pathlib import Path
 from typing import List, Optional
-import subprocess
-import sys
 
-from . import PDFOperationResult
+from . import PDFOperationBase, PDFOperationResult
+from utils.log_helper import get_logger
+
+logger = get_logger(__name__)
 
 
 class ToPDFConverter:
@@ -11,8 +12,23 @@ class ToPDFConverter:
     WORD_EXTENSIONS = {'.docx', '.doc'}
     PPT_EXTENSIONS = {'.pptx', '.ppt'}
 
-    def __init__(self, input_paths: List[Path]):
-        self.input_paths = input_paths
+    def __init__(self, input_paths: List[Path] = None):
+        self.input_paths = input_paths or []
+
+    @staticmethod
+    def detect_format(paths: List[Path]) -> str:
+        if not paths:
+            return 'unknown'
+
+        exts = {p.suffix.lower() for p in paths}
+        if exts <= ToPDFConverter.IMAGE_EXTENSIONS:
+            return 'images'
+        elif exts <= ToPDFConverter.WORD_EXTENSIONS:
+            return 'word'
+        elif exts <= ToPDFConverter.PPT_EXTENSIONS:
+            return 'ppt'
+        else:
+            return 'unknown'
 
     def convert_images(
             self,
@@ -20,58 +36,40 @@ class ToPDFConverter:
             output_name: Optional[str] = None,
             dpi: int = 150
     ) -> PDFOperationResult:
-        from PIL import Image
-        from pypdf import PdfWriter
+        try:
+            from PIL import Image as PILImage
+        except ImportError:
+            return PDFOperationResult(success=False, error_message='Pillow 未安装')
 
         if not self.input_paths:
-            return PDFOperationResult(success=False, error_message='没有选择图片文件')
-
-        for path in self.input_paths:
-            if not path.exists():
-                return PDFOperationResult(success=False, error_message=f'文件不存在: {path.name}')
-            if path.suffix.lower() not in self.IMAGE_EXTENSIONS:
-                return PDFOperationResult(
-                    success=False,
-                    error_message=f'不支持的图片格式: {path.suffix}，支持的格式: PNG, JPG, BMP, TIFF, WebP'
-                )
+            return PDFOperationResult(success=False, error_message='没有输入文件')
 
         try:
-            writer = PdfWriter()
-            temp_pdf_paths = []
+            images = []
+            for path in self.input_paths:
+                if path.suffix.lower() not in self.IMAGE_EXTENSIONS:
+                    logger.warning("Skipping non-image file: %s", path)
+                    continue
+                img = PILImage.open(str(path))
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                images.append(img)
 
-            for img_path in self.input_paths:
-                with Image.open(img_path) as img:
-                    if img.mode not in ('RGB', 'RGBA'):
-                        img = img.convert('RGB')
-
-                    temp_pdf_path = output_dir / f'_temp_{img_path.stem}.pdf'
-                    img.save(
-                        str(temp_pdf_path),
-                        'PDF',
-                        resolution=dpi,
-                        quality=95
-                    )
-                    temp_pdf_paths.append(temp_pdf_path)
-
-                    from pypdf import PdfReader
-                    reader = PdfReader(temp_pdf_path)
-                    for page in reader.pages:
-                        writer.add_page(page)
+            if not images:
+                return PDFOperationResult(success=False, error_message='没有有效的图片文件')
 
             base_name = output_name if output_name else self.input_paths[0].stem
             output_path = output_dir / f'{base_name}.pdf'
 
-            counter = 1
-            while output_path.exists():
-                output_path = output_dir / f'{base_name}_{counter}.pdf'
-                counter += 1
-
-            with open(output_path, 'wb') as f:
-                writer.write(f)
-
-            for temp_path in temp_pdf_paths:
-                if temp_path.exists():
-                    temp_path.unlink()
+            first = images[0]
+            rest = images[1:] if len(images) > 1 else []
+            first.save(
+                str(output_path),
+                'PDF',
+                resolution=dpi,
+                save_all=True,
+                append_images=rest
+            )
 
             return PDFOperationResult(
                 success=True,
@@ -79,205 +77,163 @@ class ToPDFConverter:
                 original_size=sum(p.stat().st_size for p in self.input_paths),
                 output_size=output_path.stat().st_size
             )
+
         except Exception as e:
-            return PDFOperationResult(success=False, error_message=f'图片转PDF失败: {str(e)}')
+            logger.error("Image to PDF conversion failed: %s", e, exc_info=True)
+            return PDFOperationResult(success=False, error_message=str(e))
 
     def convert_word(
             self,
             output_dir: Path,
             output_name: Optional[str] = None
     ) -> PDFOperationResult:
-        if not self.input_paths:
-            return PDFOperationResult(success=False, error_message='没有选择Word文件')
+        try:
+            import subprocess
+            import platform
 
-        for path in self.input_paths:
-            if not path.exists():
-                return PDFOperationResult(success=False, error_message=f'文件不存在: {path.name}')
-            if path.suffix.lower() not in self.WORD_EXTENSIONS:
+            if not self.input_paths:
+                return PDFOperationResult(success=False, error_message='没有输入文件')
+
+            output_files = []
+
+            for path in self.input_paths:
+                if path.suffix.lower() not in self.WORD_EXTENSIONS:
+                    logger.warning("Skipping non-Word file: %s", path)
+                    continue
+
+                base_name = output_name if output_name else path.stem
+                output_path = output_dir / f'{base_name}.pdf'
+
+                try:
+                    if platform.system() == 'Windows':
+                        self._convert_office_windows(str(path), str(output_path))
+                    else:
+                        self._convert_office_libreoffice(str(path), str(output_dir))
+
+                    if output_path.exists():
+                        output_files.append(output_path)
+                    else:
+                        logger.warning("Output file not created: %s", output_path)
+
+                except Exception as e:
+                    logger.warning("Failed to convert %s: %s", path, e)
+                    continue
+
+            if not output_files:
                 return PDFOperationResult(
                     success=False,
-                    error_message=f'不支持的Word格式: {path.suffix}，支持的格式: DOCX, DOC'
+                    error_message='转换失败，请确保已安装 Microsoft Office 或 LibreOffice'
                 )
 
-        base_name = output_name if output_name else self.input_paths[0].stem
-        output_path = output_dir / f'{base_name}.pdf'
-
-        counter = 1
-        while output_path.exists():
-            output_path = output_dir / f'{base_name}_{counter}.pdf'
-            counter += 1
-
-        try:
-            if sys.platform == 'win32':
-                return self._convert_word_com(path, output_dir, output_path)
-            else:
-                return self._convert_word_libreoffice(path, output_dir, output_path)
-        except Exception as e:
-            return PDFOperationResult(success=False, error_message=f'Word转PDF失败: {str(e)}')
-
-    def _convert_word_com(self, input_path: Path, output_dir: Path, output_path: Path) -> PDFOperationResult:
-        try:
-            import docx2pdf
-            docx2pdf.convert(str(input_path), str(output_path))
-            if output_path.exists():
-                return PDFOperationResult(
-                    success=True,
-                    output_paths=[output_path],
-                    original_size=input_path.stat().st_size,
-                    output_size=output_path.stat().st_size
-                )
-            else:
-                return PDFOperationResult(success=False, error_message='转换后未找到输出文件')
-        except ImportError:
             return PDFOperationResult(
-                success=False,
-                error_message='docx2pdf 未安装。请运行: pip install docx2pdf\n或者使用支持COM的Microsoft Word/WPS'
+                success=True,
+                output_paths=output_files,
+                original_size=sum(p.stat().st_size for p in self.input_paths),
+                output_size=sum(p.stat().st_size for p in output_files)
             )
-        except Exception as e:
-            return PDFOperationResult(success=False, error_message=f'COM调用失败: {str(e)}')
 
-    def _convert_word_libreoffice(self, input_path: Path, output_dir: Path, output_path: Path) -> PDFOperationResult:
-        try:
-            result = subprocess.run(
-                ['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', str(output_dir), str(input_path)],
-                capture_output=True,
-                text=True,
-                timeout=120
-            )
-            if result.returncode == 0:
-                expected = output_dir / f'{input_path.stem}.pdf'
-                if expected.exists():
-                    if expected != output_path:
-                        expected.rename(output_path)
-                    return PDFOperationResult(
-                        success=True,
-                        output_paths=[output_path],
-                        original_size=input_path.stat().st_size,
-                        output_size=output_path.stat().st_size
-                    )
-            return PDFOperationResult(success=False, error_message=f'LibreOffice转换失败: {result.stderr}')
-        except FileNotFoundError:
-            return PDFOperationResult(
-                success=False,
-                error_message='LibreOffice 未安装。请安装 LibreOffice 或使用 Windows/Mac 上的 Microsoft Word/WPS'
-            )
-        except subprocess.TimeoutExpired:
-            return PDFOperationResult(success=False, error_message='LibreOffice 转换超时')
         except Exception as e:
-            return PDFOperationResult(success=False, error_message=f'LibreOffice 转换失败: {str(e)}')
+            logger.error("Word to PDF conversion failed: %s", e, exc_info=True)
+            return PDFOperationResult(success=False, error_message=str(e))
 
     def convert_ppt(
             self,
             output_dir: Path,
             output_name: Optional[str] = None
     ) -> PDFOperationResult:
-        if not self.input_paths:
-            return PDFOperationResult(success=False, error_message='没有选择PPT文件')
+        try:
+            import subprocess
+            import platform
 
-        for path in self.input_paths:
-            if not path.exists():
-                return PDFOperationResult(success=False, error_message=f'文件不存在: {path.name}')
-            if path.suffix.lower() not in self.PPT_EXTENSIONS:
+            if not self.input_paths:
+                return PDFOperationResult(success=False, error_message='没有输入文件')
+
+            output_files = []
+
+            for path in self.input_paths:
+                if path.suffix.lower() not in self.PPT_EXTENSIONS:
+                    logger.warning("Skipping non-PPT file: %s", path)
+                    continue
+
+                base_name = output_name if output_name else path.stem
+                output_path = output_dir / f'{base_name}.pdf'
+
+                try:
+                    if platform.system() == 'Windows':
+                        self._convert_office_windows(str(path), str(output_path))
+                    else:
+                        self._convert_office_libreoffice(str(path), str(output_dir))
+
+                    if output_path.exists():
+                        output_files.append(output_path)
+                    else:
+                        logger.warning("Output file not created: %s", output_path)
+
+                except Exception as e:
+                    logger.warning("Failed to convert %s: %s", path, e)
+                    continue
+
+            if not output_files:
                 return PDFOperationResult(
                     success=False,
-                    error_message=f'不支持的PPT格式: {path.suffix}，支持的格式: PPTX, PPT'
+                    error_message='转换失败，请确保已安装 Microsoft Office 或 LibreOffice'
                 )
 
-        base_name = output_name if output_name else self.input_paths[0].stem
-        output_path = output_dir / f'{base_name}.pdf'
+            return PDFOperationResult(
+                success=True,
+                output_paths=output_files,
+                original_size=sum(p.stat().st_size for p in self.input_paths),
+                output_size=sum(p.stat().st_size for p in output_files)
+            )
 
-        counter = 1
-        while output_path.exists():
-            output_path = output_dir / f'{base_name}_{counter}.pdf'
-            counter += 1
-
-        try:
-            if sys.platform == 'win32':
-                return self._convert_ppt_com(path, output_dir, output_path)
-            else:
-                return self._convert_ppt_libreoffice(path, output_dir, output_path)
         except Exception as e:
-            return PDFOperationResult(success=False, error_message=f'PPT转PDF失败: {str(e)}')
+            logger.error("PPT to PDF conversion failed: %s", e, exc_info=True)
+            return PDFOperationResult(success=False, error_message=str(e))
 
-    def _convert_ppt_com(self, input_path: Path, output_dir: Path, output_path: Path) -> PDFOperationResult:
+    def _convert_office_windows(self, input_path: str, output_path: str):
+        import subprocess
         try:
-            import comtypes.client
-            import os
+            import win32com.client
+            import pythoncom
 
-            powerpoint = comtypes.client.CreateObject('Powerpoint.Application')
-            powerpoint.Visible = 1
+            pythoncom.CoInitialize()
 
-            try:
-                deck = powerpoint.Presentations.Open(str(input_path))
-                deck.SaveAs(str(output_path), 32)
-                deck.Close()
-            finally:
-                powerpoint.Quit()
-
-            if output_path.exists():
-                return PDFOperationResult(
-                    success=True,
-                    output_paths=[output_path],
-                    original_size=input_path.stat().st_size,
-                    output_size=output_path.stat().st_size
-                )
+            if input_path.lower().endswith(('.docx', '.doc')):
+                app = win32com.client.Dispatch('Word.Application')
+                doc_type = 17
+            elif input_path.lower().endswith(('.pptx', '.ppt')):
+                app = win32com.client.Dispatch('PowerPoint.Application')
+                doc_type = 32
             else:
-                return PDFOperationResult(success=False, error_message='转换后未找到输出文件')
+                raise ValueError(f'Unsupported file type: {input_path}')
+
+            app.Visible = False
+
+            if input_path.lower().endswith(('.docx', '.doc')):
+                doc = app.Documents.Open(input_path)
+                doc.SaveAs(output_path, FileFormat=doc_type)
+                doc.Close()
+            else:
+                pres = app.Presentations.Open(input_path)
+                pres.SaveAs(output_path, doc_type)
+                pres.Close()
+
+            app.Quit()
+            pythoncom.CoUninitialize()
+
         except ImportError:
-            return PDFOperationResult(
-                success=False,
-                error_message='comtypes 未安装。请运行: pip install comtypes\n或者使用支持COM的Microsoft PowerPoint/WPS'
-            )
-        except Exception as e:
-            return PDFOperationResult(success=False, error_message=f'COM调用失败: {str(e)}')
+            logger.info("win32com not available, trying LibreOffice")
+            self._convert_office_libreoffice(input_path, str(Path(output_path).parent))
 
-    def _convert_ppt_libreoffice(self, input_path: Path, output_dir: Path, output_path: Path) -> PDFOperationResult:
-        try:
-            result = subprocess.run(
-                ['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', str(output_dir), str(input_path)],
-                capture_output=True,
-                text=True,
-                timeout=120
-            )
-            if result.returncode == 0:
-                expected = output_dir / f'{input_path.stem}.pdf'
-                if expected.exists():
-                    if expected != output_path:
-                        expected.rename(output_path)
-                    return PDFOperationResult(
-                        success=True,
-                        output_paths=[output_path],
-                        original_size=input_path.stat().st_size,
-                        output_size=output_path.stat().st_size
-                    )
-            return PDFOperationResult(success=False, error_message=f'LibreOffice转换失败: {result.stderr}')
-        except FileNotFoundError:
-            return PDFOperationResult(
-                success=False,
-                error_message='LibreOffice 未安装。请安装 LibreOffice 或使用 Windows/Mac 上的 Microsoft PowerPoint/WPS'
-            )
-        except subprocess.TimeoutExpired:
-            return PDFOperationResult(success=False, error_message='LibreOffice 转换超时')
-        except Exception as e:
-            return PDFOperationResult(success=False, error_message=f'LibreOffice 转换失败: {str(e)}')
-
-    @staticmethod
-    def detect_format(paths: List[Path]) -> str:
-        if not paths:
-            return 'unknown'
-
-        extensions = {p.suffix.lower() for p in paths}
-        image_exts = ToPDFConverter.IMAGE_EXTENSIONS
-        word_exts = ToPDFConverter.WORD_EXTENSIONS
-        ppt_exts = ToPDFConverter.PPT_EXTENSIONS
-
-        if extensions.issubset(image_exts):
-            return 'images'
-        elif extensions.issubset(word_exts):
-            return 'word'
-        elif extensions.issubset(ppt_exts):
-            return 'ppt'
-        elif extensions.issubset(image_exts | word_exts):
-            return 'mixed_image_word'
-        else:
-            return 'unknown'
+    def _convert_office_libreoffice(self, input_path: str, output_dir: str):
+        import subprocess
+        cmd = [
+            'soffice',
+            '--headless',
+            '--convert-to', 'pdf',
+            '--outdir', output_dir,
+            input_path
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        if result.returncode != 0:
+            raise RuntimeError(f'LibreOffice conversion failed: {result.stderr}')

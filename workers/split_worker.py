@@ -2,6 +2,9 @@ from pathlib import Path
 
 from core.split import PDFSplitter
 from . import BaseWorker
+from utils.log_helper import get_logger
+
+logger = get_logger(__name__)
 
 
 class SplitWorker(BaseWorker):
@@ -13,6 +16,7 @@ class SplitWorker(BaseWorker):
             page_spec: str = None,
             pages_per_file: int = None,
             output_name: str = None,
+            operation: PDFSplitter = None,
             parent=None
     ):
         super().__init__(parent)
@@ -22,11 +26,12 @@ class SplitWorker(BaseWorker):
         self.page_spec = page_spec
         self.pages_per_file = pages_per_file
         self.output_name = output_name
+        self._operation = operation
 
     def run(self):
         try:
             self.status.emit('正在拆分 PDF...')
-            splitter = PDFSplitter(self.input_path)
+            splitter = self._operation or PDFSplitter(self.input_path)
 
             if self.split_mode == 'range':
                 result = splitter.split_by_ranges(self.output_dir, self.page_spec, self.output_name)
@@ -36,4 +41,5 @@ class SplitWorker(BaseWorker):
             self.finished.emit(result.success, result)
 
         except Exception as e:
+            logger.error("SplitWorker error: %s", e, exc_info=True)
             self.finished.emit(False, str(e))

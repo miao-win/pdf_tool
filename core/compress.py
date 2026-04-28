@@ -7,6 +7,9 @@ from pikepdf import Pdf, Dictionary
 from PIL import Image
 
 from . import PDFOperationBase, PDFOperationResult
+from utils.log_helper import get_logger
+
+logger = get_logger(__name__)
 
 
 class CompressionLevel(Enum):
@@ -57,6 +60,7 @@ class PDFCompressor(PDFOperationBase):
             )
 
         except Exception as e:
+            logger.error("Compress operation failed for %s: %s", self.input_path, e, exc_info=True)
             return PDFOperationResult(
                 success=False,
                 error_message=str(e)
@@ -90,7 +94,8 @@ class PDFCompressor(PDFOperationBase):
                 xobj = xobj_ref
                 if xobj.get('/Subtype') == '/Image' and xobj.get('/Filter') == '/DCTDecode':
                     self._recompress_jpeg(xobj, level)
-            except Exception:
+            except Exception as e:
+                logger.warning("Failed to process XObject %s: %s", name, e)
                 continue
 
     def _recompress_jpeg(self, xobj: pikepdf._core.Object, level: CompressionLevel):
@@ -107,14 +112,14 @@ class PDFCompressor(PDFOperationBase):
 
             xobj._write_hint = None
             xobj.unbind()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to recompress JPEG: %s", e)
 
     def _rewrite_object_streams(self, pdf: Pdf):
         try:
             pdf.allow_multiple_images_objects = True
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("allow_multiple_images_objects not supported: %s", e)
 
     def compress(
             self,

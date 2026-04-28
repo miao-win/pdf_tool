@@ -3,6 +3,9 @@ from typing import List
 
 from core.merge import PDFMerger, MergeItem
 from . import BaseWorker
+from utils.log_helper import get_logger
+
+logger = get_logger(__name__)
 
 
 class MergeWorker(BaseWorker):
@@ -11,19 +14,20 @@ class MergeWorker(BaseWorker):
             output_dir: Path,
             merge_items: List[MergeItem],
             output_name: str = None,
+            operation: PDFMerger = None,
             parent=None
     ):
         super().__init__(parent)
         self.output_dir = output_dir
         self.merge_items = merge_items
         self.output_name = output_name
+        self._operation = operation
 
     def run(self):
         try:
             self.status.emit('正在合并 PDF...')
             input_path = self.merge_items[0].file_path if self.merge_items else Path('')
-            merger = PDFMerger(input_path)
-
+            merger = self._operation or PDFMerger(input_path)
 
             if self.merge_items:
                 result = merger.merge_with_page_spec(
@@ -41,4 +45,5 @@ class MergeWorker(BaseWorker):
             self.finished.emit(result.success, result)
 
         except Exception as e:
+            logger.error("MergeWorker error: %s", e, exc_info=True)
             self.finished.emit(False, str(e))

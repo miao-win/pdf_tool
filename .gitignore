@@ -1,57 +1,59 @@
-# Python
+# Python 虚拟环境
+venv/
+env/
+.venv/
+.env/
+
+# 环境变量文件
+*.env
+.env.local
+.env.*.local
+
+# Python 编译产物
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-build/
-develop-eggs/
+
+# 分发/打包
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
+build/
 *.egg-info/
-.installed.cfg
 *.egg
 
-# Virtual Environment
-venv/
-ENV/
-env/
-.venv/
-
-# Local dependencies (pip install --target)
-.deps/
-
-# PyInstaller
-*.manifest
-*.spec
-
-# PySide6
-*.sh
-
-# IDE
-.vscode/
+# IDE 配置
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
-Thumbs.db
-ehthumbs.db
-Desktop.ini
 
-# Logs
+# 测试与覆盖率
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# 日志文件
 *.log
+logs/
 
-# Local configuration (contains user-specific paths)
-config.json
-settings.json
+# 本地配置文件（可能包含敏感信息）
+config.local.json
+settings.local.json
+
+# 临时文件
+*.tmp
+*.temp
+.temp/
+tmp/
+
+# 输出目录（用户生成的文件）
+PDFTool_Output/
+output/
+
+# 本地数据缓存
+.cache/
